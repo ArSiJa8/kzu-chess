@@ -1,17 +1,10 @@
 # Chess App
 
-Dieses Projekt ist eine einfache Mehrspieler-Schach-Webanwendung mit:
-- Lobbys (Game erstellen / Join mit Code)
-- Zeitmodi: 5, 10, 20 Minuten oder Unbegrenzt
-- Einfache Registrierung / Login (JWT)
-- Socket-basierte Kommunikation (Realtime)
+**Frontend**: React 18 + react-chessboard + chess.js
+**Backend**: Node.js + Express + Socket.IO + SQLite
 
-**Frontend**: React
-**Backend**: Node.js, Express, Socket.IO, SQLite
-
-## Schnellstart lokal
-
-1. Server starten
+### Lokaler Start
+1. Backend:
 ```bash
 cd server
 npm install
