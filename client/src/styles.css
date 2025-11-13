@@ -1,0 +1,9 @@
+body { font-family: Arial, Helvetica, sans-serif; background: #f5f5f5; }
+.container { width: 900px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+.lobby { display:flex; gap: 20px; }
+.create, .join { flex: 1; }
+input, select { display:block; padding:8px; margin:8px 0; width:100%; }
+button { padding:8px 12px; margin-top:8px; cursor:pointer; }
+.game-container { display:flex; gap:20px; align-items:flex-start; }
+.board { width: 400px; }
+.status { flex:1; }
