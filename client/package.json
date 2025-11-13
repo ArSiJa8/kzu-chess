@@ -6,7 +6,7 @@
 "react": "18.2.0",
 "react-dom": "18.2.0",
 "socket.io-client": "^4.7.2",
-"chess.js": "^2.1.0",
+"chess.js": "^1.0.0",
 "react-chessboard": "^2.0.0"
 },
 "scripts": {
