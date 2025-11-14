@@ -1,53 +1,89 @@
 import React, { useState, useEffect } from 'react';
-const [gameId, setGameId] = useState('');
-const [joined, setJoined] = useState(false);
-const [players, setPlayers] = useState([]);
-const [timeMode, setTimeMode] = useState(300);
-const [readyToStart, setReadyToStart] = useState(false);
-const [gameStarted, setGameStarted] = useState(false);
-const [side, setSide] = useState(null);
+import Game from './Game';
+import socket from './socket';
 
-useEffect(() => {
-socket.on('updatePlayers', (list) => setPlayers(list));
-socket.on('readyToStart', () => setReadyToStart(true));
-socket.on('startGame', ({ white, black, time }) => {
-setGameStarted(true);
-setSide(white.name === (username || '') ? 'white' : (black.name === (username || '') ? 'black' : null));
-alert(`Game started! White: ${white.name}, Black: ${black.name}`);
-});
-socket.on('errorMsg', (msg) => alert(msg));
-return () => {
-socket.off('updatePlayers');
-socket.off('readyToStart');
-socket.off('startGame');
-socket.off('errorMsg');
-};
-}, [username]);
+function App() {
+  const [gameId, setGameId] = useState('');
+  const [joined, setJoined] = useState(false);
+  const [players, setPlayers] = useState([]);
+  const [timeMode, setTimeMode] = useState(300);
+  const [readyToStart, setReadyToStart] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [side, setSide] = useState(null);
 
-const createGame = async () => {
-const res = await fetch(`${SERVER}/create`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ time: timeMode }) });
-const data = await res.json();
-setGameId(data.gameId);
-};
+  const username = localStorage.getItem('username') || '';
 
-const joinGame = async () => {
-if (!gameId) return alert('Bitte Game Code eingeben');
-const res = await fetch(`${SERVER}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId }) });
-const data = await res.json();
-if (data.error) return alert(data.error);
-// join via socket
-socket.emit('joinGame', { gameId, token, username });
-setJoined(true);
-};
+  useEffect(() => {
+    socket.on('updatePlayers', (list) => setPlayers(list));
+    socket.on('readyToStart', () => setReadyToStart(true));
 
-const startGame = () => {
-socket.emit('startGame', gameId);
-};
+    socket.on('startGame', ({ white, black, time }) => {
+      setGameStarted(true);
 
-if (gameStarted) {
-return <Game socket={socket} gameId={gameId} side={side} />;
+      setSide(
+        white.name === username
+          ? 'white'
+          : black.name === username
+          ? 'black'
+          : null
+      );
+
+      alert(
+        `Game started!\nWhite: ${white.name}\nBlack: ${black.name}\nTime: ${time}s`
+      );
+    });
+
+    return () => {
+      socket.off('updatePlayers');
+      socket.off('readyToStart');
+      socket.off('startGame');
+    };
+  }, [username]);
+
+  const joinGame = () => {
+    if (!gameId.trim()) return;
+    socket.emit('joinGame', { gameId, username });
+    setJoined(true);
+  };
+
+  const startGame = () => {
+    socket.emit('startGame', gameId);
+  };
+
+  if (gameStarted) {
+    return <Game socket={socket} gameId={gameId} side={side} />;
+  }
+
+  return (
+    <div className="container">
+      <h1>KZU Chess</h1>
+
+      {!joined ? (
+        <div>
+          <input
+            type="text"
+            placeholder="Game ID"
+            value={gameId}
+            onChange={(e) => setGameId(e.target.value)}
+          />
+          <button onClick={joinGame}>Join Game</button>
+        </div>
+      ) : (
+        <div>
+          <h3>Players:</h3>
+          <ul>
+            {players.map((p, i) => (
+              <li key={i}>{p.name}</li>
+            ))}
+          </ul>
+
+          {readyToStart && (
+            <button onClick={startGame}>Start Game</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
-return (
-<div className="container">
-<h1>School Chess</h1>
+export default App;
