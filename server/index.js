@@ -1,110 +1,55 @@
-import express from "express";
-import http from "http";
-import { Server } from "socket.io";
-import cors from "cors";
-import bodyParser from "body-parser";
-import sqlite3 from "sqlite3";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { v4 as uuidv4 } from "uuid";
-
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
-const PORT = process.env.PORT || 3001;
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
 
-// ---------- DATABASE ----------
-sqlite3.verbose();
-const db = new sqlite3.Database("./database.sqlite", (err) => {
-  if (err) {
-    console.error("❌ DB Error:", err.message);
-  } else {
-    console.log("✅ SQLite connected");
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
   }
 });
 
-// User table creation
-db.run(
-  `CREATE TABLE IF NOT EXISTS users (
-     id TEXT PRIMARY KEY,
-     username TEXT UNIQUE,
-     password TEXT
-   )`
-);
-
-// Game table creation
-db.run(
-  `CREATE TABLE IF NOT EXISTS games (
-     id TEXT PRIMARY KEY,
-     playerWhite TEXT,
-     playerBlack TEXT,
-     fen TEXT
-   )`
-);
-
-// ---------- AUTH ----------
-app.post("/register", (req, res) => {
-  const { username, password } = req.body;
-
-  bcrypt.hash(password, 10, (err, hash) => {
-    if (err) return res.status(500).json({ error: "Hashing failed" });
-
-    const id = uuidv4();
-    db.run(
-      `INSERT INTO users (id, username, password) VALUES (?, ?, ?)`,
-      [id, username, hash],
-      (err) => {
-        if (err) return res.status(400).json({ error: "Username exists" });
-        res.json({ success: true });
-      }
-    );
-  });
-});
-
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
-
-  db.get(
-    `SELECT * FROM users WHERE username = ?`,
-    [username],
-    (err, user) => {
-      if (!user) return res.status(400).json({ error: "Invalid credentials" });
-
-      bcrypt.compare(password, user.password, (err, ok) => {
-        if (!ok) return res.status(400).json({ error: "Invalid credentials" });
-
-        const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
-        res.json({ token });
-      });
-    }
-  );
-});
-
-// ---------- SOCKET.IO ----------
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+// Utility: Random Game Code
+function generateGameCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
 
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
+  console.log("User connected:", socket.id);
 
-  socket.on("joinGame", ({ gameId }) => {
-    socket.join(gameId);
+  // Create Lobby
+  socket.on("createLobby", () => {
+    const code = generateGameCode();
+    socket.join(code);
+    socket.emit("lobbyCreated", code);
+    console.log(`Lobby created: ${code}`);
   });
 
-  socket.on("move", ({ gameId, fen }) => {
-    io.to(gameId).emit("move", { fen });
-  });
+  // Join Lobby
+  socket.on("joinLobby", (code) => {
+    const rooms = io.sockets.adapter.rooms;
 
-  socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
+    if (!rooms.has(code)) {
+      socket.emit("lobbyError", "Lobby existiert nicht.");
+      return;
+    }
+
+    socket.join(code);
+    socket.emit("lobbyJoined", code);
+    io.to(code).emit("playerJoined", socket.id);
+    console.log(`Player joined lobby: ${code}`);
   });
 });
 
-// ---------- START ----------
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+app.get("/", (req, res) => {
+  res.send("KZU Chess server running");
+});
+
+server.listen(3001, () => {
+  console.log("Server listening on port 3001");
 });
